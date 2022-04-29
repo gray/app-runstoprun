@@ -61,7 +61,7 @@ $run   ||= 1;
 $stop  ||= 100 * $run / $limit - $run;
 
 my $termios;
-my $status;
+my $status = 0;
 my @kill;
 
 warn "Controller PID: $$\n" if $verbose;
