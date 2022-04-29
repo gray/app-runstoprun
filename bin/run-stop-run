@@ -193,6 +193,7 @@ sub run_stop_run {
 
 
 sub get_kill_list {
+    return @pid if ! $group and ! $children;
     my @p = @pid;
 
     # Generating the process table is slow- avoid if possible. The runtime of
