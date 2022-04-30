@@ -1,5 +1,8 @@
 Revision history for App-RunStopRun
 
+0.03  Sat Apr 30 23:05:19 UTC 2022
+    - Update prereqs; List::Util 1.45 needed for uniq().
+
 0.02  Sat Apr 30 17:59:26 UTC 2022
     - Add separate tty options, a la SSH.
     - Test if SIGINFO exists before localizing it.
