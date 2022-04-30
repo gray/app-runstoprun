@@ -7,6 +7,7 @@ use Config;
 use File::Spec;
 use Getopt::Long qw(:config bundling no_ignore_case require_order);
 use IO::Pty;
+use List::Util qw(first uniq);
 use POSIX qw(:unistd_h :sys_wait_h);
 use Pod::Usage;
 use Proc::ProcessTable;
@@ -19,27 +20,29 @@ use constant HAS_PORTABLE_GETPGRP =>
     !! ($Config{d_getpgid} || $Config{d_bsdgetpgrp} || $Config{d_getpgrp2});
 
 my $filename = (File::Spec->splitpath(__FILE__))[-1];
-my %option = (
-    'verbose|v'  => \my $verbose,
-    'dry-run|n'  => \my $dryrun,
+my @option = (
+    'verbose|v' => \my $verbose,
+    'dry-run|n' => \my $dryrun,
 
-    'limit|l=f'  => \my $limit,
-    'pid|p=s'    => \my @pid,
-    'run|r=f'    => \my $run,
-    'stop|s=f'   => \my $stop,
-    'group|g'    => \my $group,
-    'children|c' => \my $children,
+    'limit|l=f'      => \my $limit,
+    'pid|p=s'        => \my @pid,
+    'run|r=f'        => \my $run,
+    'stop|s=f'       => \my $stop,
+    'group|g'        => \my $group,
+    'children|c'     => \my $children,
+    'notty|no-tty|T' => \my $notty,
+    'tty|t+'         => \my $tty,
 
-    'version|V'  => \my $version,
-    'help|h'     => \my $help,
-    'man|H'      => \my $man,
+    'version|V' => \my $version,
+    'help|h'    => \my $help,
+    'man|H'     => \my $man,
 );
 my @getopt_msg;
 eval {
     local @SIG{qw(__DIE__ __WARN__)} = (sub { push @getopt_msg, $_[0] }) x 2;
-    GetOptions(%option);
+    GetOptions(@option);
 } or usage(@getopt_msg);
-@pid = do { my %p; grep ! $p{$_}++, split /,/, join ',', @pid };
+@pid = uniq split /,/, join ',', @pid;
 
 usage() if $help;
 exit printf "$filename $App::RunStopRun::VERSION\n" if $version;
@@ -60,11 +63,13 @@ $limit ||= 50;
 $run   ||= 1;
 $stop  ||= 100 * $run / $limit - $run;
 
-my $termios;
 my $status = 0;
 my @kill;
-
-warn "Controller PID: $$\n" if $verbose;
+my $isfg = (getpgrp == tcgetpgrp STDIN_FILENO);
+if ($verbose) {
+    warn "Controller PID: $$\n";
+    warn "Controller is in the foreground\n" if $isfg;
+}
 
 # Ensure END block is run.
 $SIG{INT} = $SIG{TERM} = sub { exit };
@@ -80,7 +85,7 @@ $SIG{USR1} = sub {
 $SIG{INFO} = $SIG{USR1} if exists $SIG{INFO};
 
 # TODO: if ptrace is available, it might be possible to attach to the process
-# to do something wth the file descriptors.
+# to do something with the file descriptors.
 if (@pid) {
     @kill = get_kill_list();
     exit printf "Would signal %s\n", join ',', @kill if $dryrun;
@@ -91,9 +96,29 @@ if (@pid) {
 exit print "Would exec command: @ARGV\n" if $dryrun;
 
 my $table = Proc::ProcessTable->new;
-my $pty = IO::Pty->new;
-warn sprintf "Opened pseudo-terminal: %s\n", $pty->ttyname if $verbose;
 pipe my ($parent_reader, $child_writer) or die "Can't pipe: $!";
+
+my ($pty, $termios, $ttyfh);
+unless ($notty) {
+    $ttyfh = first { isatty $_ } *STDIN, *STDERR, *STDOUT;
+    if (! $ttyfh) {
+        warn "No attached terminal found\n" if $verbose;
+        $tty = 0 if 1 == $tty
+    }
+    else { $tty ||= 1 }
+    if ($tty) {
+        $pty = IO::Pty->new;
+        warn sprintf "Opened pseudo-terminal: %s\n", $pty->ttyname if $verbose;
+        if ($ttyfh) {
+            warn sprintf "Using terminal attached to %s\n",
+                [qw(STDIN STDERR STDOUT)]->[fileno $ttyfh] if $verbose;
+            if (@ARGV and $isfg) {
+                $termios = POSIX::Termios->new;
+                $termios->getattr(fileno $ttyfh) or $termios = undef;
+            }
+        }
+    }
+}
 
 # Child
 unless ($pid[0] = fork) {
@@ -104,12 +129,17 @@ unless ($pid[0] = fork) {
     close $parent_reader;
 
     # Calls setsid(), so no need create a new group with setpgrp().
-    $pty->make_slave_controlling_terminal;
-    my $slave = $pty->slave;
-    close $pty;
-    $slave->clone_winsize_from(\*STDIN);
-    $slave->set_raw;
-    close $slave;
+    if ($pty) {
+        $pty->make_slave_controlling_terminal;
+        my $slave = $pty->slave;
+        close $pty;
+        $slave->clone_winsize_from($ttyfh) if $ttyfh;
+        $slave->set_raw;
+        close $slave;
+    }
+    else {
+        setpgrp;
+    }
 
     syswrite $child_writer, "\0";
 
@@ -122,8 +152,10 @@ close $child_writer;
 sysread $parent_reader, my $ready, 1;
 close $parent_reader;
 
-$pty->close_slave;
-$pty->set_raw;
+if ($pty) {
+    $pty->close_slave;
+    $pty->set_raw;
+}
 
 $group = 1;
 
@@ -138,7 +170,7 @@ $SIG{CHLD} = sub {
 $SIG{TSTP} = sub {
     @kill = get_kill_list();
     warn sprintf "Sending SIGTSTP to %s\n", join ',', @kill, $$ if $verbose;
-    kill STOP => @kill;
+    kill $_ => @kill for qw(TSTP STOP);
     kill STOP => $$;
 };
 $SIG{CONT} = sub {
@@ -146,25 +178,20 @@ $SIG{CONT} = sub {
     kill CONT => @kill;
 };
 $SIG{WINCH} = sub {
-    $pty->slave->clone_winsize_from(\*STDIN);
+    $pty->slave->clone_winsize_from($ttyfh) if $ttyfh;
     warn sprintf "Sending SIGWINCH to %s\n", join ',', @kill if $verbose;
     kill WINCH => @kill;
 };
 
 run_stop_run() until waitpid $pid[0], WNOHANG;
 
-close $pty;
-
 exit $status;
 
 
-BEGIN {
-    return unless @ARGV and $$ == tcgetpgrp STDIN_FILENO;
-    $termios = POSIX::Termios->new;
-    $termios->getattr(STDIN_FILENO) or $termios = undef;;
-}
 END {
     return unless @pid;
+
+    close $pty if $pty;
 
     if (@kill) {
         # Ensure the processes aren't left stopped.
@@ -172,13 +199,14 @@ END {
         kill CONT => @kill;
 
         # Controller process is in the foreground.
-        if (@ARGV and $$ == tcgetpgrp STDIN_FILENO) {
+        if (@ARGV and $isfg) {
             warn sprintf "Sending SIGTERM to %s\n", join ',', @pid if $verbose;
             kill TERM => @pid;
-            # Restore terminal settings.
-            $termios->setattr(STDIN_FILENO, &POSIX::TCSANOW) if $termios;
         }
     }
+
+    # Restore terminal settings.
+    $termios->setattr(fileno $ttyfh, &POSIX::TCSANOW) if $termios;
 }
 
 
@@ -265,6 +293,8 @@ Options:
   -p, --pid PIDS      Operate on PIDS
   -c, --children      Operate also on all child processes of the PIDs
   -g, --group         Operate on the process groups of the PIDs
+  -T, --no-tty        Disable pseudo-terminal allocation
+  -t, --tty           Force pseudo-terminal allocation
 
   -V  --version       Display the version number
   -h, --help          Display this help message
@@ -343,6 +373,15 @@ Operate on all descendent processes of the command or PIDs. These are found by
 scanning the process table and checking the parent process and group of each
 process. Note that it's not always possible to determine the parentage, since
 the process might have double-forked and changed it's process group.
+
+=item B<-T>, B<--no-tty>, B<--notty>
+
+Disable pseudo-terminal allocation.
+
+=item B<-t>, B<--tty>
+
+Force pseudo-terminal allocation. Specifying this more than once will force
+allocation even if there is no attached terminal.
 
 =item B<-V>, B<--version>
 
