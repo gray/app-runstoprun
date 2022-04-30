@@ -98,7 +98,8 @@ pipe my ($parent_reader, $child_writer) or die "Can't pipe: $!";
 # Child
 unless ($pid[0] = fork) {
     die "Can't fork: $!" unless defined $pid[0];
-    local @SIG{qw(INT TERM USR1 INFO)};
+    local @SIG{qw(INT TERM USR1)};
+    local $SIG{INFO} if exists $SIG{INFO};
 
     close $parent_reader;
 
