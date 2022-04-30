@@ -14,7 +14,7 @@ my %conf = (
     },
     PREREQ_PM => {
         'IO::Pty'            => 0,
-        'List::Util'         => 0,
+        'List::Util'         => 1.45,
         'Proc::ProcessTable' => 0,
         'Time::HiRes'        => 0,
     },

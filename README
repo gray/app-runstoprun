@@ -19,7 +19,7 @@ This module requires these other modules and libraries:
     Capture::Tiny
     ExtUtils::MakeMaker 6.52
     IO::Pty
-    List::Util
+    List::Util 1.45
     Proc::ProcessTable
     Test::More 0.88
     Time::HiRes
