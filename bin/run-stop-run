@@ -67,8 +67,8 @@ my @kill;
 warn "Controller PID: $$\n" if $verbose;
 
 # Ensure END block is run.
-local $SIG{INT} = $SIG{TERM} = sub { exit };
-local $SIG{USR1} = sub {
+$SIG{INT} = $SIG{TERM} = sub { exit };
+$SIG{USR1} = sub {
     my $pids = join ',', sort { $a <=> $b } @pid;
     my $info = sprintf "Invoked on PID%s: %s\n", 1 < @pid ? 's' : '', $pids;
     my $kill = join ',', sort { $a <=> $b } @kill;
@@ -77,7 +77,7 @@ local $SIG{USR1} = sub {
     warn $info;
 };
 # SIGINFO isn't standard.
-local $SIG{INFO} = $SIG{USR1} if exists $SIG{INFO};
+$SIG{INFO} = $SIG{USR1} if exists $SIG{INFO};
 
 # TODO: if ptrace is available, it might be possible to attach to the process
 # to do something wth the file descriptors.
@@ -127,7 +127,7 @@ $pty->set_raw;
 
 $group = 1;
 
-local $SIG{CHLD} = sub {
+$SIG{CHLD} = sub {
     local ($!, $?);
     while (0 < waitpid $pid[0], WNOHANG) {
         $status = WIFEXITED($?) ? WEXITSTATUS($?)
@@ -135,17 +135,17 @@ local $SIG{CHLD} = sub {
         warn "Received SIGCHLD for $pid[0]; exit($status)\n" if $verbose;
     }
 };
-local $SIG{TSTP} = sub {
+$SIG{TSTP} = sub {
     @kill = get_kill_list();
     warn sprintf "Sending SIGTSTP to %s\n", join ',', @kill, $$ if $verbose;
     kill STOP => @kill;
     kill STOP => $$;
 };
-local $SIG{CONT} = sub {
+$SIG{CONT} = sub {
     warn sprintf "Sending SIGCONT to %s\n", join ',', @kill if $verbose;
     kill CONT => @kill;
 };
-local $SIG{WINCH} = sub {
+$SIG{WINCH} = sub {
     $pty->slave->clone_winsize_from(\*STDIN);
     warn sprintf "Sending SIGWINCH to %s\n", join ',', @kill if $verbose;
     kill WINCH => @kill;
