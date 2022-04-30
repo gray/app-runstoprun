@@ -18,12 +18,22 @@ my ($stdout, $stderr, $exit) = capture {
 is $exit >> 8, 0, 'script compiles';
 
 ($stdout, $stderr, $exit) = capture {
-    system $^X, qw(-Ilib), $script, $^X, qw(-e), <<'    EOF';
+    system $^X, qw(-Ilib), $script, qw(-T), $^X, qw(-e), <<'    EOF';
     print STDERR "stderr\n";
     print STDOUT "stdout\n";
     EOF
 };
-is $exit >> 8, 0, 'script runs';
+is $exit >> 8, 0, 'script runs, without tty';
+is $stdout, "stdout\n", 'stdout';
+is $stderr, "stderr\n", 'stderr';
+
+($stdout, $stderr, $exit) = capture {
+    system $^X, qw(-Ilib), $script, qw(-t), $^X, qw(-e), <<'    EOF';
+    print STDERR "stderr\n";
+    print STDOUT "stdout\n";
+    EOF
+};
+is $exit >> 8, 0, 'script runs, with tty';
 is $stdout, "stdout\n", 'stdout';
 is $stderr, "stderr\n", 'stderr';
 
