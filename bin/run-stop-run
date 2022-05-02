@@ -24,14 +24,15 @@ my @option = (
     'verbose|v' => \my $verbose,
     'dry-run|n' => \my $dryrun,
 
-    'limit|l=f'      => \my $limit,
-    'pid|p=s'        => \my @pid,
-    'run|r=f'        => \my $run,
-    'stop|s=f'       => \my $stop,
-    'group|g'        => \my $group,
-    'children|c'     => \my $children,
-    'notty|no-tty|T' => \my $notty,
-    'tty|t+'         => \my $tty,
+    'limit|l=f'          => \my $limit,
+    'pid|p=s'            => \my @pid,
+    'run|r=f'            => \my $run,
+    'stop|s=f'           => \my $stop,
+    'group|g'            => \my $group,
+    'nogroup|no-group|G' => \my $nogroup,
+    'children|c'         => \my $children,
+    'notty|no-tty|T'     => \my $notty,
+    'tty|t+'             => \my $tty,
 
     'version|V' => \my $version,
     'help|h'    => \my $help,
@@ -128,7 +129,7 @@ unless ($pid[0] = fork) {
 
     close $parent_reader;
 
-    # Calls setsid(), so no need create a new group with setpgrp().
+    # Calls setsid(), so no need create a new process group with setpgrp().
     if ($pty) {
         $pty->make_slave_controlling_terminal;
         my $slave = $pty->slave;
@@ -137,7 +138,7 @@ unless ($pid[0] = fork) {
         $slave->set_raw;
         close $slave;
     }
-    else {
+    elsif (! $nogroup) {
         setpgrp;
     }
 
@@ -157,7 +158,7 @@ if ($pty) {
     $pty->set_raw;
 }
 
-$group = 1;
+$group = ! $nogroup;
 
 $SIG{CHLD} = sub {
     local ($!, $?);
@@ -259,7 +260,7 @@ sub get_kill_list {
             }
         }
 
-        if ($group) {
+        if ($group and ! $nogroup) {
             my %m; @m{ map { my $g = $group{$_}; $g ? 0 - $g : $_ } @p } = ();
             @p = keys %m;
         }
@@ -293,6 +294,7 @@ Options:
   -p, --pid PIDS      Operate on PIDS
   -c, --children      Operate also on all child processes of the PIDs
   -g, --group         Operate on the process groups of the PIDs
+  -G  --no-group      Don't create a new process group or determine PGIDs
   -T, --no-tty        Disable pseudo-terminal allocation
   -t, --tty           Force pseudo-terminal allocation
 
@@ -364,8 +366,22 @@ as a process group.
 
 =item B<-g>, B<--group>
 
-Operate on the entire process groups. This is the default when launching
-a command, as it will start a new process group.
+Operate on the entire process group. This is the default when running
+a command, as it will start a new process group. When operating on a list of
+PIDs, it will determine the associated process groups and operate on them
+directly.
+
+=item B<-G>, B<--no-group>, B<--nogroup>
+
+Don't create a new process group for the command to run. When operating on
+a list of PIDs, it will not determine associated process groups and operate on
+them, but it will still operate on any given PGIDs.
+
+Note that creating a new process group causes the command to be run in the
+background, and some commands refuse to print if they are not the foreground
+process (ex. newer versions of B<pv>). In this case, you will also have to
+disable pseudo-terminal allocation, as that results in a call to C<setsid()>,
+which creates a new process group.
 
 =item B<-c>, B<--children>
 
