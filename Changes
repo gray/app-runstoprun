@@ -1,5 +1,9 @@
 Revision history for App-RunStopRun
 
+0.04  Mon May  2 15:15:35 UTC 2022
+    - Add an option to disable creating a new process group or determining
+      associated PGIDs.
+
 0.03  Sat Apr 30 23:05:19 UTC 2022
     - Update prereqs; List::Util 1.45 needed for uniq().
 
