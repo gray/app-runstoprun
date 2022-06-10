@@ -104,7 +104,7 @@ unless ($notty) {
     $ttyfh = first { isatty $_ } *STDIN, *STDERR, *STDOUT;
     if (! $ttyfh) {
         warn "No attached terminal found\n" if $verbose;
-        $tty = 0 if 1 == $tty
+        $tty = 0 if 1 == $tty;
     }
     else { $tty ||= 1 }
     if ($tty) {
@@ -256,7 +256,7 @@ sub get_kill_list {
             my @c = @p;
             while (@c = map { @{ $child{$_} || [] } } @c) {
                 # Don't include members of any given process group.
-                push @p, grep { ! exists $g{$_} } @c
+                push @p, grep { ! exists $g{$_} } @c;
             }
         }
 
