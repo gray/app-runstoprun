@@ -17,7 +17,7 @@ use Time::HiRes qw(sleep);
 # doesn't provide a separate interface for getpgid, though it's part of the
 # standard and used internally.
 use constant HAS_PORTABLE_GETPGRP =>
-    !! ($Config{d_getpgid} || $Config{d_bsdgetpgrp} || $Config{d_getpgrp2});
+    !! grep defined, @Config{qw( d_getpgid d_bsdgetpgrp d_getpgrp2 )};
 
 my $filename = (File::Spec->splitpath(__FILE__))[-1];
 my @option = (
