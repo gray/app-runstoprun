@@ -57,8 +57,10 @@ usage('--run must be >0') if defined $run and 0 >= $run;
 usage('--stop must be >0') if defined $stop and 0 >= $stop;
 usage("Can't use --limit with both --run and --stop")
     if defined $limit and defined $run and defined $stop;
-usage('--limit must be between 1..99')
-    if defined $limit and (1 > $limit or 99 < $limit);
+if (defined $limit) {
+    $limit *= 100 if $limit and 1 > $limit;
+    usage('--limit must be between 1..99') if 1 > $limit or 99 < $limit;
+}
 
 $limit ||= 50;
 $run   ||= 1;
