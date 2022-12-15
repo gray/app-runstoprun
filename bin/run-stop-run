@@ -434,9 +434,9 @@ L<https://en.wikipedia.org/wiki/Cgroups>
 
 L<https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html>
 
-L<bash/ulimit>
+L<bash(1)/ulimit>
 
-L<nice(8)>
+L<nice(1)>, L<renice(8)>
 
 =head1 COPYRIGHT AND LICENSE
 
