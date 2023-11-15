@@ -418,9 +418,9 @@ Display this documentation.
 =head1 KNOWN PROBLEMS
 
 Operating on a PID of a foreground process will likely result in job control
-message from the shell indicating the job was stopped when it receives the
+messages from the shell indicating the job was stopped when it receives the
 SIGSTOP signal. Note that the job will be continued in the background after
-receiving the SIGCONT signal, but no shell message will be displayed.
+receiving the SIGCONT signal, but no shell messages will be displayed.
 
 It is not always possible to determine if a process is a child process. In
 that case, you can run the command separately and then run this program
