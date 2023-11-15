@@ -1,5 +1,8 @@
 Revision history for App-RunStopRun
 
+0.06  Wed Nov 15 09:28:22 UTC 2023
+    - Fix the INT and TERM signal handlers to exit with the correct status.
+
 0.05  Fri Dec 16 04:20:09 UTC 2022
     - Convert the limit to a percentage if given as a decimal fraction.
 
