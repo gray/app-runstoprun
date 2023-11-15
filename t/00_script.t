@@ -37,4 +37,14 @@ is $exit >> 8, 0, 'script runs, with tty';
 is $stdout, "stdout\n", 'stdout';
 is $stderr, "stderr\n", 'stderr';
 
+($stdout, $stderr, $exit) = capture {
+    system $^X, qw(-Ilib), $script, qw(-t), $^X, qw(-e), <<'    EOF';
+    print STDERR "stderr\n";
+    print STDOUT "stdout\n";
+    kill INT => $$;
+    sleep 5;
+    EOF
+};
+is $exit >> 8, 2, 'script exits with correct status when interrupted';
+
 done_testing;
