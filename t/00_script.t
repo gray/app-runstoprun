@@ -38,9 +38,7 @@ is $stdout, "stdout\n", 'stdout';
 is $stderr, "stderr\n", 'stderr';
 
 ($stdout, $stderr, $exit) = capture {
-    system $^X, qw(-Ilib), $script, qw(-t), $^X, qw(-e), <<'    EOF';
-    print STDERR "stderr\n";
-    print STDOUT "stdout\n";
+    system $^X, qw(-Ilib), $script, $^X, qw(-e), <<'    EOF';
     kill INT => $$;
     sleep 5;
     EOF
