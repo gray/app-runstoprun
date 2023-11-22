@@ -306,7 +306,7 @@ Options:
   -H, --man           Display the complete documentation
     END_OF_OPTIONS
 
-    exit @_ ? 2 : 0;
+    exit(@_ ? 2 : 0);
 }
 
 
