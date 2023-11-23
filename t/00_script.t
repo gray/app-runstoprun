@@ -37,12 +37,19 @@ is $exit >> 8, 0, 'script runs, with tty';
 is $stdout, "stdout\n", 'stdout';
 is $stderr, "stderr\n", 'stderr';
 
-($stdout, $stderr, $exit) = capture {
-    system $^X, qw(-Ilib), $script, $^X, qw(-e), <<'    EOF';
-    kill INT => $$;
-    sleep 5;
-    EOF
-};
-is $exit >> 8, 2, 'script exits with correct status when interrupted';
+SKIP: {
+    ($stdout, $stderr, $exit) = capture {
+        system $^X, qw(-Ilib), $script, $^X, qw(-e), <<'        EOF';
+        kill(0   => $$) or die qq(Can't send signals to self\n);
+        kill(INT => $$) or die qq(Signal not sent or ignored\n);
+        sleep 1;
+        EOF
+    };
+    if (length $stderr) {
+        diag $stderr;  # Display in CPAN testers reports.
+        skip $stderr;
+    }
+    is $exit >> 8, 2, 'script exits with correct status when interrupted';
+}
 
 done_testing;
