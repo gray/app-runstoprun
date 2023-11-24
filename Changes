@@ -1,6 +1,6 @@
 Revision history for App-RunStopRun
 
-0.06  Thu Nov 23 22:42:42 UTC 2023
+0.07  Thu Nov 23 22:42:42 UTC 2023
     - Skip signal test if system has issues with it.
     - Fix operator precedence in call to exit. (RT #150537)
 
