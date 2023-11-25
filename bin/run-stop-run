@@ -74,9 +74,13 @@ if ($verbose) {
     warn "Controller is in the foreground\n" if $isfg;
 }
 
-# Ensure END block is run.
-$SIG{INT}  = sub { exit($status & 128 | 2)  };
-$SIG{TERM} = sub { exit($status & 128 | 15) };
+my $sigint;
+$SIG{INT} = $SIG{TERM} = sub {
+    $sigint = shift;
+    warn "Received SIG$sigint\n" if $verbose;
+    # Ensure END block is run.
+    exit;
+};
 $SIG{USR1} = sub {
     my $pids = join ',', sort { $a <=> $b } @pid;
     my $info = sprintf "Invoked on PID%s: %s\n", 1 < @pid ? 's' : '', $pids;
@@ -211,6 +215,12 @@ END {
 
     # Restore terminal settings.
     $termios->setattr(fileno $ttyfh, &POSIX::TCSANOW) if $termios;
+
+    if ($sigint) {
+        warn "Sending SIG$sigint to self\n" if $verbose;
+        local @SIG{qw(INT TERM)};
+        kill $sigint => $$;
+    }
 }
 
 
