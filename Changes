@@ -1,5 +1,9 @@
 Revision history for App-RunStopRun
 
+0.07_01  Sun Nov 26 16:08:13 UTC 2023
+    - Re-throw handled signal in controller.
+    - Disable failing signal tests; print diagnostics.
+
 0.07  Thu Nov 23 22:42:42 UTC 2023
     - Skip signal test if system has issues with it.
     - Fix operator precedence in call to exit. (RT #150537)
