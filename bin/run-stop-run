@@ -169,10 +169,10 @@ $group = ! $nogroup;
 
 $SIG{CHLD} = sub {
     local ($!, $?);
-    while (0 < waitpid -1, WNOHANG) {
+    while (0 < (my $pid = waitpid -1, WNOHANG)) {
         $status = WIFEXITED($?) ? WEXITSTATUS($?)
             : WIFSIGNALED($?) ? WTERMSIG($?) : $? >> 8;
-        warn "Received SIGCHLD for $pid[0]; exit($status)\n" if $verbose;
+        warn "Received SIGCHLD for $pid; exit($status)\n" if $verbose;
     }
 };
 $SIG{TSTP} = sub {
